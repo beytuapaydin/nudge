@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nudge — Calm deadline & bill reminders</title>
+    <style>
+      :root {
+        --sand-50: #faf8f5;
+        --sand-100: #f3efe9;
+        --sand-200: #e6dfd5;
+        --sage-50: #eef5f3;
+        --sage-600: #2f6f62;
+        --sage-700: #24584d;
+        --ink-900: #1c1917;
+        --ink-600: #57534e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--sand-50);
+        color: var(--ink-900);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 28px 20px 64px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 40px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        font-size: 1.15rem;
+        color: var(--ink-900);
+        text-decoration: none;
+      }
+
+      .brand-dot {
+        width: 28px;
+        height: 28px;
+        border-radius: 9px;
+        background: var(--sage-600);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 0.9rem;
+      }
+
+      .hero {
+        margin-bottom: 44px;
+      }
+
+      h1 {
+        margin: 0 0 14px;
+        font-size: clamp(1.9rem, 5vw, 2.65rem);
+        line-height: 1.18;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        margin: 0 0 24px;
+        font-size: 1.08rem;
+        color: var(--ink-600);
+        max-width: 54ch;
+      }
+
+      .cta-link {
+        display: inline-block;
+        background: var(--sage-600);
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+        padding: 14px 22px;
+        border-radius: 16px;
+        min-height: 48px;
+      }
+
+      .cta-link:hover {
+        background: var(--sage-700);
+      }
+
+      .section-title {
+        margin: 0 0 16px;
+        font-size: 1.2rem;
+        font-weight: 650;
+      }
+
+      .steps {
+        display: grid;
+        gap: 14px;
+        margin-bottom: 36px;
+      }
+
+      .card {
+        background: #ffffff;
+        border: 1px solid var(--sand-200);
+        border-radius: 22px;
+        padding: 20px;
+      }
+
+      .step-num {
+        display: inline-block;
+        background: var(--sage-50);
+        color: var(--sage-700);
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 999px;
+        margin-bottom: 8px;
+      }
+
+      .card h3 {
+        margin: 0 0 6px;
+        font-size: 1.05rem;
+      }
+
+      .card p {
+        margin: 0;
+        font-size: 0.96rem;
+        color: var(--ink-600);
+      }
+
+      .privacy-box {
+        background: var(--sage-50);
+        border: 1px solid #d7e8e3;
+        border-radius: 22px;
+        padding: 22px;
+        margin-bottom: 36px;
+      }
+
+      .privacy-box h2 {
+        margin: 0 0 8px;
+        font-size: 1.1rem;
+        color: var(--sage-700);
+      }
+
+      .privacy-box p {
+        margin: 0;
+        font-size: 0.96rem;
+        color: var(--ink-600);
+      }
+
+      .waitlist {
+        background: #ffffff;
+        border: 1px solid var(--sand-200);
+        border-radius: 24px;
+        padding: 24px 20px;
+      }
+
+      .waitlist h2 {
+        margin: 0 0 6px;
+        font-size: 1.25rem;
+      }
+
+      .waitlist-desc {
+        margin: 0 0 18px;
+        font-size: 0.95rem;
+        color: var(--ink-600);
+      }
+
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      input[type="email"],
+      input[type="text"] {
+        width: 100%;
+        min-height: 50px;
+        padding: 12px 16px;
+        font-size: 1rem;
+        border: 1px solid var(--sand-200);
+        border-radius: 14px;
+        background: var(--sand-50);
+        color: var(--ink-900);
+      }
+
+      input[type="email"]:focus,
+      input[type="text"]:focus {
+        outline: 2px solid var(--sage-600);
+        background: #fff;
+      }
+
+      button[type="submit"] {
+        min-height: 50px;
+        padding: 12px 20px;
+        border: 0;
+        border-radius: 14px;
+        background: var(--sage-600);
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button[type="submit"]:hover {
+        background: var(--sage-700);
+      }
+
+      .form-status {
+        margin: 12px 0 0;
+        font-size: 0.92rem;
+        color: var(--sage-700);
+        display: none;
+      }
+
+      footer {
+        margin-top: 40px;
+        text-align: center;
+        font-size: 0.85rem;
+        color: var(--ink-600);
+      }
+
+      .consent {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        font-size: 0.85rem;
+        color: var(--ink-600);
+      }
+      .consent input {
+        margin-top: 4px;
+        flex: none;
+      }
+      .form-status.error {
+        color: #a65d3b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <a class="brand" href="#">
+          <span class="brand-dot" aria-hidden="true">🔔</span>
+          <span>Nudge</span>
+        </a>
+        <a href="#waitlist" style="color: var(--sage-700); font-weight: 600; text-decoration: none;">
+          Join waitlist
+        </a>
+      </header>
+
+      <main>
+        <section class="hero">
+          <h1>Catch trials, returns, and bills before they surprise you.</h1>
+          <p class="subtitle">
+            Built for ADHD brains that hate planners. Drop in a screenshot or email—Nudge pulls out
+            the date, the cost, and the one next step, then reminds you gently until it’s handled.
+          </p>
+          <a class="cta-link" href="#waitlist">Get early access</a>
+        </section>
+
+        <section aria-labelledby="how-heading">
+          <h2 id="how-heading" class="section-title">How it works</h2>
+          <div class="steps">
+            <article class="card">
+              <span class="step-num">Step 1</span>
+              <h3>Forward or snap it</h3>
+              <p>
+                Upload a screenshot, snap a paper letter, or paste an email. No folders, tags, or
+                setup required.
+              </p>
+            </article>
+
+            <article class="card">
+              <span class="step-num">Step 2</span>
+              <h3>Confirm in one tap</h3>
+              <p>
+                Nudge spots the deadline, amount, and next action in plain words. Check it once and
+                tap “Looks right.”
+              </p>
+            </article>
+
+            <article class="card">
+              <span class="step-num">Step 3</span>
+              <h3>Get nudged until it’s done</h3>
+              <p>
+                Receive calm reminders 7, 3, and 1 day before the date—with one-tap Done or Snooze
+                buttons, and no red panic walls.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="privacy-box" aria-labelledby="privacy-heading">
+          <h2 id="privacy-heading">Our privacy promise</h2>
+          <p>
+            <strong>Photos are not stored.</strong> Your screenshots and letter photos are sent once to
+            an AI service to pull out the key facts, and Nudge does not keep them. Only the short
+            summary details (title, date, amount, next step) are saved.
+          </p>
+        </section>
+
+        <section id="waitlist" class="waitlist" aria-labelledby="waitlist-heading">
+          <h2 id="waitlist-heading">Want in when email nudges open?</h2>
+          <p class="waitlist-desc">
+            Leave your email for early access. Only launch updates—no spam, ever.
+          </p>
+
+          <form id="waitlist-form">
+            <input
+              id="waitlist-email"
+              type="email"
+              required
+              placeholder="you@example.com"
+              aria-label="Email address"
+            />
+            <input
+              id="waitlist-forget"
+              type="text"
+              placeholder="Optional: what do you most often forget?"
+              aria-label="What do you most often forget? (optional)"
+            />
+            <label class="consent">
+              <input id="waitlist-consent" type="checkbox" required />
+              <span>
+                I agree that Nudge may email me about the launch. I can unsubscribe any time. My
+                email is used for nothing else.
+              </span>
+            </label>
+            <button type="submit">Join waitlist</button>
+          </form>
+          <p id="waitlist-status" class="form-status" role="status"></p>
+        </section>
+      </main>
+
+      <footer>
+        Nudge — Calm deadline reminders. Built without guilt.
+      </footer>
+    </div>
+
+    <script>
+      const form = document.getElementById('waitlist-form');
+      const emailInput = document.getElementById('waitlist-email');
+      const statusEl = document.getElementById('waitlist-status');
+
+      // 1) Create a free form at formspree.io (or similar) and paste its URL here.
+      //    Example: 'https://formspree.io/f/abcdwxyz'
+      const ENDPOINT = '';
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const email = emailInput.value.trim();
+        if (!email) return;
+
+        statusEl.style.display = 'block';
+        statusEl.classList.remove('error');
+
+        if (!ENDPOINT) {
+          statusEl.classList.add('error');
+          statusEl.textContent =
+            'Waitlist is not connected yet, so nothing was saved. (Set ENDPOINT in the page code.)';
+          return;
+        }
+
+        try {
+          const res = await fetch(ENDPOINT, {
+            method: 'POST',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email,
+              forgets: document.getElementById('waitlist-forget').value.trim(),
+              consent: true,
+              source: location.href,
+            }),
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          statusEl.textContent = `Thanks! ${email} is on the list. We'll send one calm note when it's ready.`;
+          form.reset();
+        } catch (err) {
+          statusEl.classList.add('error');
+          statusEl.textContent = 'Could not save that right now. Please try again in a minute.';
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nudge extraction test</title>
+<style>
+  body{margin:0;background:#FAF8F5;color:#292524;font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:24px 16px 80px}
+  h1{margin:0 0 4px;font-size:22px;color:#24584D}.mut{color:#78716C;font-size:13px}
+  .card{background:#fff;border:1px solid #E6DFD5;border-radius:18px;padding:16px;margin:14px 0}
+  input{font:inherit;border:1px solid #D4C9BA;border-radius:12px;padding:9px 12px;background:#FAF8F5;min-width:0}
+  button{font:inherit;border-radius:12px;border:1px solid #E6DFD5;background:#F3EFE9;padding:9px 16px;cursor:pointer;font-weight:600}
+  button.pri{background:#2F6F62;border-color:#2F6F62;color:#fff} button:disabled{opacity:.55;cursor:default}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  table{width:100%;border-collapse:collapse;font-size:13px} th,td{padding:8px 6px;border-bottom:1px solid #E6DFD5;text-align:left;vertical-align:top}
+  th{font-size:12px;color:#78716C;text-transform:uppercase;letter-spacing:.04em}
+  .ok{color:#2F6F62;font-weight:700}.bad{color:#A65D3B;font-weight:700}
+  .exp{color:#78716C} .sum{font-size:18px;font-weight:700}
+  details{margin-top:4px} summary{cursor:pointer;color:#2F6F62} pre{white-space:pre-wrap;background:#FAF8F5;padding:8px;border-radius:8px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Nudge extraction test</h1>
+  <p class="mut">Runs the 15 test documents through Gemini with the same prompt as the Nudge app and checks type, amount, currency and deadline against the expected values. All documents are fake.</p>
+
+  <div class="card">
+    <div class="bar">
+      <input id="key" type="password" placeholder="Gemini API key" style="flex:2;min-width:180px" autocomplete="off">
+      <input id="model" placeholder="model" value="gemini-3.5-flash-lite" style="flex:1;min-width:160px">
+      <button class="pri" id="run">Run all 15</button>
+      <button id="copy" disabled>Copy failures report</button>
+    </div>
+    <p class="mut" id="prog" style="margin:10px 0 0"></p>
+    <p class="sum" id="sum" style="margin:6px 0 0"></p>
+  </div>
+
+  <div class="card" style="overflow-x:auto">
+    <table>
+      <thead><tr><th>#</th><th>Case</th><th>Type</th><th>Amount</th><th>Currency</th><th>Deadline</th><th>Result</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const DOCS = [
+ {
+  "n": 1,
+  "label": "EN | Subscription Trial — Standard",
+  "text": "From: billing@cloudnotes.app\nSubject: Your CloudNotes Pro trial ends soon\n\nHi Alex,\nYour 14-day free trial of CloudNotes Pro is coming to an end. Unless you cancel before November 28, 2026, your plan will automatically renew at 11.99 EUR/month.\nManage your subscription anytime in Account Settings.",
+  "expected": {
+   "title": "CloudNotes Pro Free Trial",
+   "type": "subscription_trial",
+   "amount": 11.99,
+   "currency": "EUR",
+   "deadline": "2026-11-28",
+   "next_action": "Cancel before Nov 28, 2026 to avoid being charged 11.99 EUR.",
+   "confidence": "high"
+  }
+ },
+ {
+  "n": 2,
+  "label": "EN | Subscription Renewal — Different Currency Than Account",
+  "text": "From: support@streambox.tv\nSubject: Upcoming renewal for StreamBox US\n\nHello,\nYour introductory $14.99 USD/month StreamBox US plan will renew automatically on December 10, 2026. Because your account uses a EUR Visa debit card, your bank will convert the USD charge using its daily exchange rate plus any card FX fee.",
+  "expected": {
+   "title": "StreamBox US Subscription",
+   "type": "subscription_trial",
+   "amount": 14.99,
+   "currency": "USD",
+   "deadline": "2026-12-10",
+   "next_action": "Cancel before Dec 10, 2026 to avoid the $14.99 USD renewal on your EUR card.",
+   "confidence": "high"
+  }
+ },
+ {
+  "n": 3,
+  "label": "DE | Subscription Trial — Date Written as \"14.12.\" Without Year",
+  "text": "Von: service@fitflow-app.de\nBetreff: Erinnerung an deinen Probemonat\n\nHallo Sam,\ndein kostenloser Probemonat bei FitFlow Plus endet am 14.12. Wenn du nicht kündigst, verlängert sich das Abo automatisch für 19,90 € pro Monat.\nDu kannst direkt in der App unter „Mein Abo“ kündigen.",
+  "expected": {
+   "title": "FitFlow Plus Trial",
+   "type": "subscription_trial",
+   "amount": 19.9,
+   "currency": "EUR",
+   "deadline": "2026-12-14",
+   "next_action": "Cancel in the FitFlow app before Dec 14, 2026 to avoid paying 19.90 EUR/month.",
+   "confidence": "medium"
+  }
+ },
+ {
+  "n": 4,
+  "label": "EN | Subscription Trial — Two Dates in One Text",
+  "text": "From: hello@designhub.co.uk\nSubject: Welcome to your DesignHub Annual Trial\n\nThanks for starting your 7-day free trial!\nYour trial ends on December 1, 2026. If you do not cancel by December 1, 2026, your annual membership (£89.00 GBP/year) will begin automatically, and your subsequent renewal date will be December 1, 2027.",
+  "expected": {
+   "title": "DesignHub Annual Trial",
+   "type": "subscription_trial",
+   "amount": 89,
+   "currency": "GBP",
+   "deadline": "2026-12-01",
+   "next_action": "Cancel by Dec 1, 2026 to avoid being billed £89.00 GBP for the year.",
+   "confidence": "high"
+  }
+ },
+ {
+  "n": 5,
+  "label": "TR | Marketing Email Disguised Like Subscription — No Real Deadline",
+  "text": "Kimden: firsat@muzikkutusu.com\nKonu: Premium'a geçmenin tam zamanı!\n\nMerhaba,\nSınırlı bir süre için MüzikKutusu Premium ayda sadece 59,99 TL! Reklamsız müzik dinle, çevrimdışı indir ve istediğin zaman iptal et. Bu özel fırsatı kaçırma, hemen katıl!",
+  "expected": {
+   "title": "MüzikKutusu Premium Promo",
+   "type": "other",
+   "amount": 59.99,
+   "currency": "TRY",
+   "deadline": null,
+   "next_action": "Promotional offer only—no active subscription or deadline to act on.",
+   "confidence": "low"
+  }
+ },
+ {
+  "n": 6,
+  "label": "EN | Return Window — Standard Order Return",
+  "text": "From: orders@nordikfootwear.com\nSubject: Delivered: Order #NF-77412\n\nYour Nordik Footwear boots (124.50 EUR) were delivered on November 20, 2026.\nNeed a different size? You can return unworn items for a full refund within 30 days of delivery—your return window closes on December 20, 2026.",
+  "expected": {
+   "title": "Nordik Footwear Return Window",
+   "type": "return_window",
+   "amount": 124.5,
+   "currency": "EUR",
+   "deadline": "2026-12-20",
+   "next_action": "Send back unworn boots by Dec 20, 2026 if you want a 124.50 EUR refund.",
+   "confidence": "high"
+  }
+ },
+ {
+  "n": 7,
+  "label": "DE | Return Window — Two Dates in One Text",
+  "text": "Von: kundenservice@kaufhaus-nord.de\nBetreff: Deine Bestellung vom 18.11.2026 (#KN-3094)\n\nHallo,\nvielen Dank für deinen Einkauf vom 18.11.2026 (Gesamtbetrag: 79,00 EUR).\nSollte der Artikel nicht passen, nutze bitte dein 14-tägiges Rückgaberecht und sende das Paket bis spätestens 02.12.2026 kostenlos zurück.",
+  "expected": {
+   "title": "Kaufhaus Nord Return (#KN-3094)",
+   "type": "return_window",
+   "amount": 79,
+   "currency": "EUR",
+   "deadline": "2026-12-02",
+   "next_action": "Ship the package back by Dec 2, 2026 if you want a 79.00 EUR refund.",
+   "confidence": "high"
+  }
+ },
+ {
+  "n": 8,
+  "label": "EN | Order Confirmation — No Clear Return Deadline",
+  "text": "From: hi@cozyhomegoods.com\nSubject: Order #48291 has shipped!\n\nGreat news—your CozyHome throw blanket ($64.00 USD) is on the way!\nIf anything isn't quite right when it arrives, visit our Help Center to check our return policy and eligibility details.",
+  "expected": {
+   "title": "CozyHome Order #48291",
+   "type": "return_window",
+   "amount": 64,
+   "currency": "USD",
+   "deadline": null,
+   "next_action": "Check CozyHome's Help Center for the return deadline once the package arrives.",
+   "confidence": "low"
+  }
+ },
+ {
+  "n": 9,
+  "label": "TR | Order Delivery & Return Window — Two Dates",
+  "text": "Kimden: siparis@teknomarket.com.tr\nKonu: Teslimat Bilgisi - Sipariş #TM-5519\n\nSayın Müşterimiz,\n1.450,00 TL tutarındaki siparişiniz 22.11.2026 tarihinde teslim edilmiştir. Ürünü iade etmek isterseniz teslimat tarihinden itibaren 14 gün içinde, en geç 06.12.2026 tarihine kadar iade kodu oluşturabilirsiniz.",
+  "expected": {
+   "title": "TeknoMarket Return (#TM-5519)",
+   "type": "return_window",
+   "amount": 1450,
+   "currency": "TRY",
+   "deadline": "2026-12-06",
+   "next_action": "Create a return code by Dec 6, 2026 if you want to return the 1,450.00 TRY order.",
+   "confidence": "high"
+  }
+ },
+ {
+  "n": 10,
+  "label": "EN | Bill / Invoice — Standard Utility Bill",
+  "text": "From: billing@fibernet.eu\nSubject: Invoice #FN-2026-11 is ready\n\nHi Jordan,\nYour monthly FiberNet Home Internet invoice is ready.\nAmount due: 44.90 EUR\nPayment due date: December 5, 2026\nPlease transfer via SEPA using reference FN-2026-11-882.",
+  "expected": {
+   "title": "FiberNet Home Internet Bill",
+   "type": "bill",
+   "amount": 44.9,
+   "currency": "EUR",
+   "deadline": "2026-12-05",
+   "next_action": "Pay 44.90 EUR via SEPA with reference FN-2026-11-882 by Dec 5, 2026.",
+   "confidence": "high"
+  }
+ },
+ {
+  "n": 11,
+  "label": "DE | Bill / Invoice — Medical Invoice",
+  "text": "Zahnarztpraxis Dr. Weber – Privatliquidation\nRechnungsnummer: ZW-8841\nRechnungsbetrag: 185,40 EUR\n\nSehr geehrte(r) Patient(in),\nfür die am 16.11.2026 erbrachten Leistungen berechnen wir 185,40 EUR. Bitte überweisen Sie den Betrag unter Angabe der Rechnungsnummer bis zum 15.12.2026 auf das unten genannte Konto.",
+  "expected": {
+   "title": "Dr. Weber Dental Invoice",
+   "type": "bill",
+   "amount": 185.4,
+   "currency": "EUR",
+   "deadline": "2026-12-15",
+   "next_action": "Transfer 185.40 EUR with reference ZW-8841 by Dec 15, 2026.",
+   "confidence": "high"
+  }
+ },
+ {
+  "n": 12,
+  "label": "TR | Bill / Invoice — Two Dates (Issue Date vs Due Date)",
+  "text": "MobilHat Telekom A.Ş.\nFatura Özeti – Kasım 2026\nFatura Kesim Tarihi: 20.11.2026\nÖdenecek Tutar: 620,50 TL\nSon Ödeme Tarihi: 30.11.2026\n\nGecikme faizi uygulanmaması için faturanızı 30.11.2026 tarihine kadar ödeyiniz.",
+  "expected": {
+   "title": "MobilHat Phone Bill",
+   "type": "bill",
+   "amount": 620.5,
+   "currency": "TRY",
+   "deadline": "2026-11-30",
+   "next_action": "Pay 620.50 TRY by Nov 30, 2026 to avoid late fees.",
+   "confidence": "high"
+  }
+ },
+ {
+  "n": 13,
+  "label": "DE | Official Letter — Broadcast Fee Notice",
+  "text": "ARD ZDF Deutschlandradio Beitragsservice\nBeitragsnummer: 901 442 817\nZahlungsaufforderung\n\nSehr geehrte(r) Beitragszahler(in),\nfür den Zeitraum 09/2026 bis 11/2026 besteht ein offener Betrag von 55,08 EUR. Bitte begleichen Sie diesen Betrag bis zum 11.12.2026, um Mahnkosten zu vermeiden.",
+  "expected": {
+   "title": "ARD ZDF Beitragsservice Fee",
+   "type": "official_letter",
+   "amount": 55.08,
+   "currency": "EUR",
+   "deadline": "2026-12-11",
+   "next_action": "Pay 55.08 EUR to Beitragsservice (Ref 901 442 817) by Dec 11, 2026.",
+   "confidence": "high"
+  }
+ },
+ {
+  "n": 14,
+  "label": "EN | Official Letter — No Clear Deadline",
+  "text": "City Council Mobility Office\nResident Parking Zone Notice\n\nDear Resident,\nParking zone hours in District 4 will be updated next spring. No payment is required at this time. Please keep this letter for your records and check the city portal periodically for future permit renewal announcements.",
+  "expected": {
+   "title": "City Council Parking Notice",
+   "type": "official_letter",
+   "amount": null,
+   "currency": null,
+   "deadline": null,
+   "next_action": "Keep the letter for your records; no payment or deadline right now.",
+   "confidence": "low"
+  }
+ },
+ {
+  "n": 15,
+  "label": "EN | Official Letter — Document Submission Deadline, No Fee",
+  "text": "Riverdale Municipal Housing Office\nApplication Reference: RMH-2026-4410\n\nDear Applicant,\nBefore we can finalize your housing benefit review, please upload a copy of your November 2026 utility statement to the citizen portal no later than December 8, 2026. No fee is required.",
+  "expected": {
+   "title": "Municipal Housing Document Upload",
+   "type": "official_letter",
+   "amount": null,
+   "currency": null,
+   "deadline": "2026-12-08",
+   "next_action": "Upload your November 2026 utility statement to the portal by Dec 8, 2026.",
+   "confidence": "high"
+  }
+ }
+];
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = (n) => String(n).padStart(2, '0');
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const TYPES = ['subscription_trial','return_window','bill','official_letter','other'];
+try { $('#key').value = localStorage.getItem('nudge.html.key') || ''; $('#model').value = localStorage.getItem('nudge.html.model') || $('#model').value; } catch {}
+
+const SCHEMA = { type:'OBJECT', properties:{ title:{type:'STRING'}, type:{type:'STRING', enum:TYPES}, amount:{type:'NUMBER', nullable:true}, currency:{type:'STRING', nullable:true},
+  deadline:{type:'STRING', nullable:true, description:'YYYY-MM-DD or null'}, next_action:{type:'STRING'}, confidence:{type:'STRING', enum:['high','medium','low']}, language:{type:'STRING'} },
+  required:['title','type','amount','currency','deadline','next_action','confidence','language'] };
+const sysPrompt = () => [
+  'You extract key deadline and cost facts from screenshots, emails, bills, letters, or short user notes.',
+  `Today's local date is ${today()}.`,
+  'Input may be in any language. Write title and next_action in clear, calm English.',
+  '1. If the deadline is missing, ambiguous or unreliable, set deadline to null and confidence to "low". Never guess a date.',
+  '2. If the amount is unclear or not applicable, set amount and currency to null.',
+  '3. next_action is one short, helpful sentence. No legal advice, no panic.',
+  '4. Return only JSON matching the schema.' ].join('\n');
+
+async function extract(text, key, model) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const init = { method:'POST', headers:{'Content-Type':'application/json','x-goog-api-key':key},
+    body: JSON.stringify({ systemInstruction:{parts:[{text:sysPrompt()}]}, contents:[{role:'user',parts:[{text}]}],
+      generationConfig:{responseMimeType:'application/json', responseSchema:SCHEMA} }) };
+  let res, data;
+  for (let a = 0; a < 4; a++) {
+    res = await fetch(url, init); data = await res.json().catch(() => ({}));
+    if (res.ok || ![429,500,503].includes(res.status)) break;
+    await new Promise(r => setTimeout(r, 2000 * 2 ** a));
+  }
+  if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+  const raw = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '{}';
+  return JSON.parse(raw);
+}
+
+const same = (f, e, g) => {
+  if (f === 'amount') return (e === null && (g === null || g === undefined)) || (e !== null && typeof g === 'number' && Math.abs(e - g) < 0.01);
+  if (f === 'currency') return (e || null) === (g ? String(g).toUpperCase() : null);
+  return (e ?? null) === (g ?? null);
+};
+const FIELDS = ['type','amount','currency','deadline'];
+const results = {};
+
+function render() {
+  $('#rows').innerHTML = DOCS.map(d => {
+    const r = results[d.n];
+    const cells = FIELDS.map(f => {
+      if (!r) return '<td class="mut">–</td>';
+      if (r.error) return '<td class="mut">–</td>';
+      const ok = same(f, d.expected[f], r.got[f]);
+      return `<td>${ok ? '<span class="ok">✓</span>' : `<span class="bad">✗</span><br><span class="exp">want ${esc(d.expected[f] ?? 'null')}</span><br>got ${esc(r.got[f] ?? 'null')}`}</td>`;
+    }).join('');
+    const verdict = !r ? '<span class="mut">pending</span>' : r.error ? `<span class="bad">error</span><br><span class="mut">${esc(r.error)}</span>` : (r.pass ? '<span class="ok">pass</span>' : '<span class="bad">fail</span>');
+    const extra = r && r.got ? `<details><summary>details</summary><pre>${esc(d.text)}\n\n→ model: ${esc(JSON.stringify(r.got, null, 1))}\n\n→ expected: ${esc(JSON.stringify(d.expected, null, 1))}</pre></details>` : '';
+    return `<tr><td>${d.n}</td><td>${esc(d.label)}${extra}</td>${cells}<td>${verdict}</td></tr>`;
+  }).join('');
+  const done = Object.values(results).filter(r => !r.error);
+  if (done.length) {
+    const pass = done.filter(r => r.pass).length;
+    const fieldOk = done.reduce((n, r) => n + r.fieldsOk, 0), fieldAll = done.length * FIELDS.length;
+    $('#sum').textContent = `${pass}/${done.length} fully correct · ${fieldOk}/${fieldAll} fields correct`;
+  }
+}
+
+$('#run').onclick = async () => {
+  const key = $('#key').value.trim(), model = $('#model').value.trim();
+  if (!key) { $('#prog').textContent = 'Add your Gemini key first.'; return; }
+  $('#run').disabled = true; $('#copy').disabled = true;
+  for (const k in results) delete results[k];
+  render();
+  for (let i = 0; i < DOCS.length; i++) {
+    const d = DOCS[i]; $('#prog').textContent = `Running ${i + 1}/${DOCS.length}…`;
+    try {
+      const got = await extract(d.text, key, model);
+      const fieldsOk = FIELDS.filter(f => same(f, d.expected[f], got[f])).length;
+      results[d.n] = { got, fieldsOk, pass: fieldsOk === FIELDS.length };
+    } catch (e) { results[d.n] = { error: e.message }; }
+    render(); await new Promise(r => setTimeout(r, 500));
+  }
+  $('#prog').textContent = 'Done.'; $('#run').disabled = false; $('#copy').disabled = false;
+};
+
+$('#copy').onclick = async () => {
+  const bad = DOCS.filter(d => results[d.n] && (results[d.n].error || !results[d.n].pass));
+  const rep = bad.length ? bad.map(d => {
+    const r = results[d.n];
+    return `#${d.n} ${d.label}\nDOCUMENT:\n${d.text}\nMODEL: ${r.error ? 'ERROR ' + r.error : JSON.stringify(r.got)}\nEXPECTED: ${JSON.stringify(d.expected)}\n`;
+  }).join('\n---\n') : 'All documents passed.';
+  const head = `${$('#sum').textContent}\nmodel: ${$('#model').value}\n\n`;
+  try { await navigator.clipboard.writeText(head + rep); $('#prog').textContent = 'Report copied. Paste it into the chat.'; }
+  catch { prompt('Copy this report:', head + rep); }
+};
+render();
+</script>
+</body>
+</html>

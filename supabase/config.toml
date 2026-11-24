@@ -1,0 +1,11 @@
+[functions.extract-nudge]
+verify_jwt = false
+
+[functions.send-reminders]
+verify_jwt = false
+
+[functions.handle-reminder-action]
+verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = false
