@@ -150,7 +150,7 @@ const DOCS = [
   "text": "From: hi@cozyhomegoods.com\nSubject: Order #48291 has shipped!\n\nGreat news—your CozyHome throw blanket ($64.00 USD) is on the way!\nIf anything isn't quite right when it arrives, visit our Help Center to check our return policy and eligibility details.",
   "expected": {
    "title": "CozyHome Order #48291",
-   "type": "return_window",
+   "type": "other",
    "amount": null,
    "currency": null,
    "deadline": null,
@@ -273,9 +273,9 @@ const sysPrompt = () => [
   `Today's local date is ${today()}.`,
   'Input may be in any language (German, English, Turkish, other). Always write title and next_action in Turkish, regardless of the input language. Keep proper names, amounts, IBANs, reference codes and URLs exactly as written in the input. Keep them clear and calm.',
   '1. If the deadline is missing, ambiguous or unreliable, set deadline to null and confidence to "low". Never guess a date.',
-  '2. If the amount is unclear or not applicable, set amount and currency to null. An item price in an order or shipping confirmation that is already paid is not an amount to pay: use null. Write currency as a 3-letter ISO 4217 code (EUR, USD, TRY, GBP), never a symbol or local abbreviation (TL means TRY).',
+  '2. amount is the money at stake for the deadline: the amount due, the charge that will happen when a trial or subscription renews, or the purchase price that a return would refund. If no amount is stated, or it is unclear, set amount and currency to null. A shipping confirmation with no return deadline and no payment due: type "other", amount null. Write currency as a 3-letter ISO 4217 code (EUR, USD, TRY, GBP), never a symbol or local abbreviation (TL means TRY).',
   '3. next_action is one short, helpful sentence. No legal advice, no panic.',
-  '4. Use type "renewal" for documents or contracts that expire or renew (passport, ID card, residence permit, car inspection, insurance, contract end or notice period). Use the expiry date, or the last day to act, as the deadline. Automatically renewing subscriptions and free trials are type "subscription_trial", not "renewal". Marketing or promotional offers with no real deadline are type "other" with deadline null and confidence "low".',
+  '4. Use type "renewal" for documents or contracts that expire or renew (passport, ID card, residence permit, car inspection, insurance, contract end or notice period). Use the expiry date, or the last day to act, as the deadline. Automatically renewing subscriptions and free trials are type "subscription_trial", not "renewal". Marketing or promotional offers with no real deadline are type "other" with deadline null and confidence "low". Letters or notices from authorities (city council, tax office, court, registry office) are type "official_letter" even when there is no deadline.',
   '5. iban: the payee IBAN if the input shows one. reference_code: the payment reference (Verwendungszweck), case or file number (Aktenzeichen), or customer/contract number needed to finish the task. Copy them exactly as written. If not clearly present, use null. Never invent or guess either.',
   '6. action_url: a full https link printed in the input for cancelling, paying or opening the portal. If there is none, use null. Never invent a URL.',
   '7. Return only JSON matching the schema.' ].join('\n');
