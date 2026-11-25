@@ -1,0 +1,29 @@
+{
+  "id": "./nudge.html",
+  "name": "Nudge",
+  "short_name": "Nudge",
+  "description": "Calm reminders for deadlines that cost money. Sakin hatırlatmalar. Ruhige Fristerinnerungen.",
+  "start_url": "./nudge.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0C0A1D",
+  "theme_color": "#0C0A1D",
+  "categories": ["productivity", "finance", "utilities"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "share_target": {
+    "action": "./nudge.html?share=1",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [{ "name": "media", "accept": ["image/*", "application/pdf"] }]
+    }
+  }
+}

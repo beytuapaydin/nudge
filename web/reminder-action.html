@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Nudge — Confirm action</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 32px 16px;
+        background: #FAF8F5;
+        color: #292524;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      .card {
+        max-width: 440px;
+        margin: 40px auto;
+        background: #ffffff;
+        border: 1px solid #E6DFD5;
+        border-radius: 24px;
+        padding: 28px;
+        text-align: center;
+      }
+      .eyebrow {
+        margin: 0 0 8px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #2F6F62;
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: 22px;
+        color: #1c1917;
+      }
+      p {
+        margin: 0 0 22px;
+        line-height: 1.5;
+        color: #57534e;
+      }
+      button {
+        width: 100%;
+        min-height: 50px;
+        border: 0;
+        border-radius: 14px;
+        background: #2F6F62;
+        color: #ffffff;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 12px 20px;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <p class="eyebrow">Nudge</p>
+      <h1 id="heading"></h1>
+      <p id="details"></p>
+      <button id="confirm-btn" type="button" hidden></button>
+    </main>
+
+    <script>
+      const FUNCTION_URL = 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/handle-reminder-action';
+
+      const TEXT = {
+        tr: {
+          loading: 'Kayıt yükleniyor…', invalid: 'Geçersiz bağlantı', openNudge: 'Bu kaydı güncellemek için Nudge’ı tarayıcında aç.',
+          expired: 'Bağlantının süresi dolmuş ya da geçersiz', confirmDone: 'Onayla: Bitti olarak işaretle', confirmSnooze: 'Onayla: 1 gün ertele',
+          saving: 'Kaydediliyor…', doneHead: 'Bitti olarak işaretlendi', doneBody: '{title} halledildi. Bu sekmeyi kapatabilirsin.',
+          snoozedHead: '1 gün ertelendi', snoozedBody: '{title}, {date} tarihine kadar bekleyecek. Bu sekmeyi kapatabilirsin.',
+          retry: 'Tekrar dene', failed: 'Kayıt güncellenemedi.', pageTitle: 'Nudge — İşlemi onayla',
+        },
+        en: {
+          loading: 'Loading item…', invalid: 'Invalid link', openNudge: 'Open Nudge in your browser to update this item.',
+          expired: 'Link expired or invalid', confirmDone: 'Confirm: Mark done', confirmSnooze: 'Confirm: Snooze 1 day',
+          saving: 'Saving…', doneHead: 'Marked done', doneBody: '{title} is handled. You can close this tab.',
+          snoozedHead: 'Snoozed for 1 day', snoozedBody: '{title} will wait until {date}. You can close this tab.',
+          retry: 'Try again', failed: 'Could not update item.', pageTitle: 'Nudge — Confirm action',
+        },
+        de: {
+          loading: 'Eintrag wird geladen…', invalid: 'Ungültiger Link', openNudge: 'Öffne Nudge im Browser, um diesen Eintrag zu aktualisieren.',
+          expired: 'Link abgelaufen oder ungültig', confirmDone: 'Bestätigen: Als erledigt markieren', confirmSnooze: 'Bestätigen: 1 Tag verschieben',
+          saving: 'Wird gespeichert…', doneHead: 'Als erledigt markiert', doneBody: '{title} ist erledigt. Du kannst diesen Tab schließen.',
+          snoozedHead: 'Um 1 Tag verschoben', snoozedBody: '{title} wartet bis zum {date}. Du kannst diesen Tab schließen.',
+          retry: 'Erneut versuchen', failed: 'Eintrag konnte nicht aktualisiert werden.', pageTitle: 'Nudge — Aktion bestätigen',
+        },
+      };
+      const pickLang = (v) => (v === 'tr' || v === 'de' || v === 'en') ? v : null;
+
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id') || '';
+      const action = params.get('action') || '';
+      const exp = params.get('exp') || '';
+      const sig = params.get('sig') || '';
+
+      // Language: ?lang=… if present, otherwise the server tells us (user's app language), otherwise the browser's.
+      let lang = pickLang(params.get('lang')) || pickLang((navigator.language || 'en').slice(0, 2)) || 'en';
+      const tx = (k, v) => { let out = TEXT[lang][k] || k; for (const [a, b] of Object.entries(v || {})) out = out.split('{' + a + '}').join(b); return out; };
+      const setLang = (l) => { lang = pickLang(l) || lang; document.documentElement.lang = lang; document.title = tx('pageTitle'); };
+
+      const headingEl = document.getElementById('heading');
+      const detailsEl = document.getElementById('details');
+      const btn = document.getElementById('confirm-btn');
+
+      setLang(lang);
+      headingEl.textContent = tx('loading');
+
+      async function loadPreview() {
+        if (!id || !action || !exp || !sig) {
+          headingEl.textContent = tx('invalid');
+          detailsEl.textContent = tx('openNudge');
+          return;
+        }
+
+        try {
+          const fwd = new URLSearchParams(params); fwd.delete('lang');
+          const res = await fetch(`${FUNCTION_URL}?${fwd.toString()}`, {
+            headers: { Accept: 'application/json' },
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error('expired');
+          if (!params.get('lang')) setLang(data.lang);
+
+          headingEl.textContent = data.title;
+          detailsEl.textContent = data.next_action;
+          btn.textContent = action === 'done' ? tx('confirmDone') : tx('confirmSnooze');
+          btn.hidden = false;
+        } catch (err) {
+          headingEl.textContent = tx('expired');
+          detailsEl.textContent = tx('openNudge');
+        }
+      }
+
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = tx('saving');
+
+        try {
+          const res = await fetch(FUNCTION_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+            body: JSON.stringify({ id, action, exp, sig }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || tx('failed'));
+          if (!params.get('lang')) setLang(data.lang);
+
+          btn.hidden = true;
+          if (data.action === 'done') {
+            headingEl.textContent = tx('doneHead');
+            detailsEl.textContent = tx('doneBody', { title: data.title });
+          } else {
+            headingEl.textContent = tx('snoozedHead');
+            detailsEl.textContent = tx('snoozedBody', { title: data.title, date: data.snoozed_until });
+          }
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = tx('retry');
+          detailsEl.textContent = tx('failed');
+        }
+      });
+
+      loadPreview();
+    </script>
+  </body>
+</html>
